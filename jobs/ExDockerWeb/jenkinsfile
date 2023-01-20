@@ -1,0 +1,52 @@
+
+pipeline {
+    agent any
+    parameters {
+        string(name: 'nombre_contenedor', defaultValue: 'proy-prueba', description: 'nombre del docker')
+        string(name: 'nombre_imagen', defaultValue: 'iproy-prueba', description: 'nombre de la imagen')
+        string(name: 'tag_imagen', defaultValue: 'latest', description: 'Tag de la imagen')
+        string(name: 'puerto_imagen', defaultValue: '81', description: 'puerto imagen a pubicar')        
+    }
+    environment {
+        nombre_final = "${nombre_contenedor}${tag_imagen}${puerto_imagen}"
+    }
+    stages {
+        stage('Parar o Eliminar Imagen') {
+//Validando si el Docker esta o no corriendo, de estar corriendo en el step lo detiene.
+            when {
+                expression {
+                    DOCKER_EXISTE = sh(returnStdout: true, script: 'echo "$(docker ps -q --filter name=${nombre_final})"')
+                    return DOCKER_EXISTE != ''
+                }
+            }
+            steps {
+                script {
+                    sh '''
+                        docker stop ${nombre_final}
+                    '''
+                }
+            }
+        }
+
+        stage ('Construir imagen') {
+            steps {
+                script {
+                    sh '''
+                        docker build . -t ${nombre_imagen}:${tag_imagen}
+                    '''
+                }
+            }
+        }
+
+        stage ('Ejecutar imagen') {
+            steps {
+                script {
+                    sh '''
+                        docker run -dtp ${puertu_imagen}:80 --name ${nombre_final} $[nombre_imagen}:${tag_imagen}
+                    '''
+                }
+            }
+        }
+
+    }
+}
